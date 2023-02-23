@@ -6,8 +6,8 @@
 
 import torch
 import numpy as np
-from ..utils import *
 import torch.multiprocessing as mp
+from ..utils import *
 from collections import deque
 from skimage.io import imsave
 

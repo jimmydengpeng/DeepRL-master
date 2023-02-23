@@ -16,6 +16,8 @@ from baselines.common.atari_wrappers import FrameStack as FrameStack_
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv, VecEnv
 
 from ..utils import * 
+
+from colorlog import logger
 # This file CAN'T be called directly,
 # can only be called by a script outside deep_rl
 # e.g. same level with or above of deep_rl
@@ -27,7 +29,7 @@ except ImportError:
 
 
 # adapted from https://github.com/ikostrikov/pytorch-a2c-ppo-acktr/blob/master/envs.py
-def make_env(env_id, seed, rank, episode_life=True):
+def make_env(env_id, seed, rank, episode_life=True, env_config=None):
     def _thunk():
         random_seed(seed)
         if env_id.startswith("dm"):
@@ -53,6 +55,14 @@ def make_env(env_id, seed, rank, episode_life=True):
                 env = TransposeImage(env)
             env = FrameStack(env, 4)
 
+        # from gym.envs.registration import registry
+        # logger.debug("all:", registry.all().has)
+
+        # for highway-env
+        if env_config:
+            env.config.update(env_config)
+            logger.debug("env.config", env.config)
+            env.reset()
         return env
 
     return _thunk
@@ -65,6 +75,7 @@ class OriginalReturnWrapper(gym.Wrapper):
 
     def step(self, action):
         obs, reward, done, info = self.env.step(action)
+        # logger.debug("action:", action)
         self.env.render() #TODO add by jimmy
         self.total_rewards += reward
         if done:
@@ -157,6 +168,7 @@ class DummyVecEnv(VecEnv):
 class Task:
     def __init__(self,
                  name,
+                 env_config=None,
                  num_envs=1,
                  single_process=True,
                  log_dir=None,
@@ -166,7 +178,7 @@ class Task:
             seed = np.random.randint(int(1e9))
         if log_dir is not None:
             mkdir(log_dir)
-        envs = [make_env(name, seed, i, episode_life) for i in range(num_envs)]
+        envs = [make_env(name, seed, i, episode_life, env_config) for i in range(num_envs)]
         if single_process:
             Wrapper = DummyVecEnv
         else:
